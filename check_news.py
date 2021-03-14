@@ -20,7 +20,7 @@ PROFILE_DIRECTORY	=	r"Profile 2"
 FILE_DIRECTORY		=	dirname(realpath(__file__))
 SOURCES = {
 	"Papers"	:	[rf"{FILE_DIRECTORY}\Papers"	, "https://paperswithcode.com/latest"],
-	"Mails"		:	[rf"{FILE_DIRECTORY}\Mails"		, "https://outlook.live.com/mail/0/inbox"],
+	"Mails"		:	[rf"{FILE_DIRECTORY}\Mails"	, "https://outlook.live.com/mail/0/inbox"],
 	"Videos"	:	[rf"{FILE_DIRECTORY}\Videos"	, "https://www.youtube.com/feed/subscriptions"],
 	"Articles"	:	[rf"{FILE_DIRECTORY}\Articles"	, "https://towardsdatascience.com"]
 	}
