@@ -14,7 +14,7 @@ import utils
 
 INTERVAL	=	30 # minutes
 
-USER_DATA_DIR		=	r"D:/Selenium/User Data" 
+USER_DATA_DIR			=	r"D:/Selenium/User Data" 
 PROFILE_DIRECTORY	=	r"Profile 2"
 
 FILE_DIRECTORY		=	dirname(realpath(__file__))
