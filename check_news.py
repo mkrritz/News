@@ -35,10 +35,23 @@ def check_for_new_papers(source):
 	for i in range(1, N+1):
 		TITLE 			= f"/html/body/div[3]/div[2]/div[{i}]/div[2]/div/div[1]/h1/a"
 		DESCRIPTION	= f"/html/body/div[3]/div[2]/div[{i}]/div[2]/div/div[1]/p[2]"
+		LINK 				= f"/html/body/div[3]/div[2]/div[{i}]/div[1]/a"
 		try:
-			sel_title 		= driver.find_element_by_xpath(TITLE)
+			sel_title 			= driver.find_element_by_xpath(TITLE)
 			sel_description	=	driver.find_element_by_xpath(DESCRIPTION)
-			papers.append([sel_title.text, sel_description.text])
+			sel_link				= driver.find_element_by_xpath(LINK)
+			
+			title = sel_title.text
+			title = title.encode(encoding = 'ascii', errors = 'replace') 
+			title = title.decode('UTF-8').replace('\n', '')
+			
+			description = sel_description.text
+			description = description.encode(encoding = 'ascii', errors = 'replace') 
+			description = description.decode('UTF-8').replace('\n', '')
+			
+			link = sel_link.get_attribute('href')
+			
+			papers.append([title, description, link])
 		except:
 			print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
 			continue
@@ -49,18 +62,18 @@ def check_for_new_papers(source):
 	filename = utils.generate_file_name()
 	with open(rf"{directory}\{filename}.txt", 'w', encoding="utf-8", errors='ignore') as file:
 		for paper in papers:
-			file.write("%s|^.#@%s\n" % (paper[0], paper[1]))
+			file.write("%s|^.#@%s|^.#@%s\n" % (paper[0], paper[1], paper[2]))
 
 	if latest is not None:
-		for paper in papers:
-			t, d = paper
+		for idx, paper in enumerate(papers):
+			t, d, l = paper
 			for line in latest:
 				tl = line.split("|^.#@")[0]
 				if t == tl:
 					break
 			else:
 				print(f"{'-'*90}")
-				print(f"{t}\n{d}")
+				print(f"|{utils.colored(idx+1, Fore.CYAN)}|{t}\n{d}")
 
 def check_for_new_mails(source):
 	N = 8
@@ -71,11 +84,18 @@ def check_for_new_mails(source):
 	for i in range(1, N+1):
 		MAIL = f"/html/body/div[2]/div/div[2]/div[1]/div[1]/div/div/div[3]/div[2]/div/div[1]/div[2]/div/div/div/div/div/div[{i}]"
 		try:
-			sel_sender = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, MAIL)))
-			mails.append(sel_sender.text.split('\n'))
+			sel_mail = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, MAIL)))
+			
+			mail = sel_mail.text.split('\n')
+			sender = mail[1]
+			subject = mail[2] + '\n'
+			info = mail[3]
+			
+			mails.append([sender, subject, info])
 		except:
 			print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
-			break
+			print(f"The thing: {mail}")
+			continue
 
 	latest = utils.get_latest_data(directory)
 	utils.delete_folder_contents(directory)
@@ -83,20 +103,18 @@ def check_for_new_mails(source):
 	filename = utils.generate_file_name()
 	with open(rf"{directory}\{filename}.txt", 'w', encoding="utf-8", errors='ignore') as file:
 		for mail in mails:
-			if len(mail) > 3:
-				file.write("%s|^.#@%s\n" % (mail[1], mail[2]))
+				file.write("%s|^.#@%s" % (mail[0], mail[1]))
 
 	if latest is not None:
 		for mail in mails:
-			if len(mail) > 3:
-				sender, subject = mail[1], mail[2]
-				for line in latest:
-					tl = line.split("|^.#@")[1]
-					if subject == tl.strip():
-						break
-				else:
-					print(f"{'-'*90}")
-					print(f" {sender}: {subject}")
+			sender, subject, info = mail
+			for line in latest:
+				se, su = line.split("|^.#@")
+				if su == subject:
+					break
+			else:
+				print(f"{'-'*90}")
+				print(f"{sender}:\n {subject}\n    {info}")
 
 def check_for_new_videos(source):
 	TODAY = '/html/body/ytd-app/div/ytd-page-manager/ytd-browse/ytd-two-column-browse-results-renderer/div[1]/ytd-section-list-renderer/div[2]/ytd-item-section-renderer[1]/div[3]/ytd-shelf-renderer/div[1]/div[2]/ytd-grid-renderer/div[1]'
@@ -106,14 +124,19 @@ def check_for_new_videos(source):
 
 	v_idx, videos = 1, []
 	while True:
-		TITLE	= TODAY + f'/ytd-grid-video-renderer[{v_idx}]/div[1]/div[1]/div[1]/h3/a'
-		CHANNEL	= TODAY + f'/ytd-grid-video-renderer[{v_idx}]/div[1]/div[1]/div[1]/div/div[1]/div[1]/ytd-channel-name/div/div/yt-formatted-string/a'
-		LINK	= TODAY + f'/ytd-grid-video-renderer[{v_idx}]/div[1]/ytd-thumbnail/a'
+		TITLE	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/div[1]/div[1]/h3/a'
+		CHANNEL	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/div[1]/div[1]/div/div[1]/div[1]/ytd-channel-name/div/div/yt-formatted-string/a'
+		LINK	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/ytd-thumbnail/a'
 		try:
 			sel_title	= driver.find_element_by_xpath(TITLE)
 			sel_channel = driver.find_element_by_xpath(CHANNEL)
 			sel_link = driver.find_element_by_xpath(LINK)
-			videos.append([sel_title.text, sel_channel.text, sel_link.get_attribute('href')])
+			
+			title = sel_title.text
+			channel = sel_channel.text			
+			link = sel_link.get_attribute('href')
+			
+			videos.append([title, channel, link])
 			v_idx += 1
 		except:
 			# TODO: print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
@@ -147,7 +170,7 @@ def check_for_new_articles(source):
 	
 	articles = []
 	for i in range(1, N+1):
-		TITLE 			= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'
+		TITLE 			= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'													
 		DESCRIPTION 	= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[2]/h2'
 		if i == 1: #...
 			TITLE 		= ARTICLES + f'/div[{i}]/div/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'
@@ -155,7 +178,18 @@ def check_for_new_articles(source):
 		try:
 			sel_title = driver.find_element_by_xpath(TITLE)
 			sel_description = driver.find_element_by_xpath(DESCRIPTION)
-			articles.append([sel_title.text, sel_description.text])
+			
+			title = sel_title.text
+			title = title.encode(encoding = 'ascii', errors = 'replace') 
+			title = title.decode('UTF-8').replace('\n', '')
+			
+			description = sel_description.text
+			description = description.encode(encoding = 'ascii', errors = 'replace') 
+			description = description.decode('UTF-8').replace('\n', '')
+			
+			#link = sel_link.get_attribute('href')
+			
+			articles.append([title, description])
 		except:
 			print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
 			continue
