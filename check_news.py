@@ -25,91 +25,103 @@ SOURCES = {
 	"Articles":	[rf"{FILE_DIRECTORY}\Articles", "https://towardsdatascience.com"]
 	}
 
-def check_for_new_papers(source):	
-	N = 8
+S = "|^.#@"
+
+def check_for_new_papers(source):
+	def scrape():
+		N = 8
+		papers = []
+		for i in range(1, N+1):
+			TITLE 			= f"/html/body/div[3]/div[2]/div[{i}]/div[2]/div/div[1]/h1/a"
+			DESCRIPTION	= f"/html/body/div[3]/div[2]/div[{i}]/div[2]/div/div[1]/p[2]"
+			LINK 				= f"/html/body/div[3]/div[2]/div[{i}]/div[1]/a"
+			try:
+				sel_title 			= driver.find_element_by_xpath(TITLE)
+				sel_description	=	driver.find_element_by_xpath(DESCRIPTION)
+				sel_link				= driver.find_element_by_xpath(LINK)
+				
+				title = sel_title.text
+				title = title.encode(encoding = 'ascii', errors = 'replace') 
+				title = title.decode('UTF-8').replace('\n', '')
+				
+				description = sel_description.text
+				description = description.encode(encoding = 'ascii', errors = 'replace') 
+				description = description.decode('UTF-8').replace('\n', '')
+				
+				link = sel_link.get_attribute('href')
+				
+				papers.append([title, description, link])
+			except:
+				print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
+				continue
+		return papers
+	
 	directory, link = SOURCES[source] 
 	with utils.wait_for_page_load(driver):
 		driver.get(link)
 	
-	papers = []
-	for i in range(1, N+1):
-		TITLE 			= f"/html/body/div[3]/div[2]/div[{i}]/div[2]/div/div[1]/h1/a"
-		DESCRIPTION	= f"/html/body/div[3]/div[2]/div[{i}]/div[2]/div/div[1]/p[2]"
-		LINK 				= f"/html/body/div[3]/div[2]/div[{i}]/div[1]/a"
-		try:
-			sel_title 			= driver.find_element_by_xpath(TITLE)
-			sel_description	=	driver.find_element_by_xpath(DESCRIPTION)
-			sel_link				= driver.find_element_by_xpath(LINK)
-			
-			title = sel_title.text
-			title = title.encode(encoding = 'ascii', errors = 'replace') 
-			title = title.decode('UTF-8').replace('\n', '')
-			
-			description = sel_description.text
-			description = description.encode(encoding = 'ascii', errors = 'replace') 
-			description = description.decode('UTF-8').replace('\n', '')
-			
-			link = sel_link.get_attribute('href')
-			
-			papers.append([title, description, link])
-		except:
-			print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
-			continue
+	papers = scrape()
 
 	latest = utils.get_latest_data(directory)
 	utils.delete_folder_contents(directory)
-
 	filename = utils.generate_file_name()
+	
 	with open(rf"{directory}\{filename}.txt", 'w', encoding="utf-8", errors='ignore') as file:
 		for paper in papers:
-			file.write("%s|^.#@%s|^.#@%s\n" % (paper[0], paper[1], paper[2]))
+			t, d, l = paper
+			file.write(f"{t}{S}{d}{S}{l}\n")
 
 	if latest is not None:
 		for idx, paper in enumerate(papers):
 			t, d, l = paper
 			for line in latest:
-				tl = line.split("|^.#@")[0]
+				tl = line.split(S)[0]
 				if t == tl:
 					break
 			else:
 				print(f"{'-'*90}")
-				print(f"|{utils.colored(idx+1, Fore.CYAN)}|{t}\n{d}")
+				print(f"|{utils.colored(idx+1, Fore.CYAN)}| {t}\n {d}")
 
 def check_for_new_mails(source):
-	N = 8
+	def scrape():
+		N = 8
+		mails = []
+		for i in range(1, N+1):
+			MAIL = f"/html/body/div[2]/div/div[2]/div[1]/div[1]/div/div/div[3]/div[2]/div/div[1]/div[2]/div/div/div/div/div/div[{i}]"
+			try:
+				sel_mail = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, MAIL)))
+				
+				mail = sel_mail.text.split('\n')
+				sender = mail[1]
+				subject = mail[2]
+				info = mail[3]
+				
+				mails.append([sender, subject, info])
+			except:
+				print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
+				print(f"The thing: {mail}")
+				continue
+		return mails
+		
 	directory, link = SOURCES[source] 
 	driver.get(link) # cant wait_for_page_load here
 	
-	mails = []
-	for i in range(1, N+1):
-		MAIL = f"/html/body/div[2]/div/div[2]/div[1]/div[1]/div/div/div[3]/div[2]/div/div[1]/div[2]/div/div/div/div/div/div[{i}]"
-		try:
-			sel_mail = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, MAIL)))
-			
-			mail = sel_mail.text.split('\n')
-			sender = mail[1]
-			subject = mail[2] + '\n'
-			info = mail[3]
-			
-			mails.append([sender, subject, info])
-		except:
-			print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
-			print(f"The thing: {mail}")
-			continue
+	mails = scrape()
 
 	latest = utils.get_latest_data(directory)
 	utils.delete_folder_contents(directory)
-
 	filename = utils.generate_file_name()
+	
 	with open(rf"{directory}\{filename}.txt", 'w', encoding="utf-8", errors='ignore') as file:
 		for mail in mails:
-				file.write("%s|^.#@%s" % (mail[0], mail[1]))
+				sender, subject = mail[:-1]
+				file.write(f"{sender}{S}{subject}\n")
 
 	if latest is not None:
 		for mail in mails:
 			sender, subject, info = mail
 			for line in latest:
-				se, su = line.split("|^.#@")
+				su = line.split(S)[1].strip()
 				if su == subject:
 					break
 			else:
@@ -117,44 +129,49 @@ def check_for_new_mails(source):
 				print(f"{sender}:\n {subject}\n    {info}")
 
 def check_for_new_videos(source):
-	TODAY = '/html/body/ytd-app/div/ytd-page-manager/ytd-browse/ytd-two-column-browse-results-renderer/div[1]/ytd-section-list-renderer/div[2]/ytd-item-section-renderer[1]/div[3]/ytd-shelf-renderer/div[1]/div[2]/ytd-grid-renderer/div[1]'
+	def scrape():
+		TODAY = '/html/body/ytd-app/div/ytd-page-manager/ytd-browse/ytd-two-column-browse-results-renderer/div[1]/ytd-section-list-renderer/div[2]/ytd-item-section-renderer[1]/div[3]/ytd-shelf-renderer/div[1]/div[2]/ytd-grid-renderer/div[1]'
+		v_idx, videos = 1, []
+		while True:
+			TITLE	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/div[1]/div[1]/h3/a'
+			CHANNEL	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/div[1]/div[1]/div/div[1]/div[1]/ytd-channel-name/div/div/yt-formatted-string/a'
+			LINK	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/ytd-thumbnail/a'
+			try:
+				sel_title	= driver.find_element_by_xpath(TITLE)
+				sel_channel = driver.find_element_by_xpath(CHANNEL)
+				sel_link = driver.find_element_by_xpath(LINK)
+				
+				title = sel_title.text
+				channel = sel_channel.text			
+				link = sel_link.get_attribute('href')
+				
+				videos.append([title, channel, link])
+				v_idx += 1
+			except:
+				print(f"{v_idx}")
+				break
+		return videos
+	
 	directory, link = SOURCES[source] 
 	with utils.wait_for_page_load(driver):
 		driver.get(link)
 
-	v_idx, videos = 1, []
-	while True:
-		TITLE	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/div[1]/div[1]/h3/a'
-		CHANNEL	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/div[1]/div[1]/div/div[1]/div[1]/ytd-channel-name/div/div/yt-formatted-string/a'
-		LINK	= TODAY + rf'/ytd-grid-video-renderer[{v_idx}]/div[1]/ytd-thumbnail/a'
-		try:
-			sel_title	= driver.find_element_by_xpath(TITLE)
-			sel_channel = driver.find_element_by_xpath(CHANNEL)
-			sel_link = driver.find_element_by_xpath(LINK)
-			
-			title = sel_title.text
-			channel = sel_channel.text			
-			link = sel_link.get_attribute('href')
-			
-			videos.append([title, channel, link])
-			v_idx += 1
-		except:
-			# TODO: print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
-			break
+	videos = scrape()
 
 	latest = utils.get_latest_data(directory)
 	utils.delete_folder_contents(directory)
-
 	filename = utils.generate_file_name()
+	
 	with open(rf"{directory}\{filename}.txt", 'w', encoding="utf-8", errors='ignore') as file:
 		for video in videos:
-			file.write("%s|^.#@%s|^.#@%s\n" % (video[0], video[1], video[2]))
+			t, c, l = video
+			file.write(f"{t}{S}{c}{S}{l}\n")
 
 	if latest is not None:
 		for idx, video in enumerate(videos):
 			t, c, l = video
 			for line in latest:
-				tl = line.split("|^.#@")[0]
+				tl = line.split(S)[0]
 				if t == tl:
 					break
 			else:
@@ -162,51 +179,56 @@ def check_for_new_videos(source):
 				print(f"|||{c.upper()}\n|{utils.colored(idx+1, Fore.CYAN)}|\n|||{t}")
 
 def check_for_new_articles(source):
-	N = 8
-	ARTICLES = '/html/body/div[1]/div/div[3]/div[2]/div/div[2]/div'
+	def scrape():
+		N = 8
+		ARTICLES = '/html/body/div[1]/div/div[3]/div[2]/div/div[2]/div'
+		articles = []
+		for i in range(1, N+1):
+			TITLE 				= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'													
+			DESCRIPTION 	= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[2]/h2'
+			if i == 1: #...
+				TITLE 			= ARTICLES + f'/div[{i}]/div/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'
+				DESCRIPTION = ARTICLES + f'/div[{i}]/div/div/div/div/div[1]/div[2]/div/section/div[2]/h2'
+			try:
+				sel_title = driver.find_element_by_xpath(TITLE)
+				sel_description = driver.find_element_by_xpath(DESCRIPTION)
+				
+				title = sel_title.text
+				title = title.encode(encoding = 'ascii', errors = 'replace') 
+				title = title.decode('UTF-8').replace('\n', '')
+				
+				description = sel_description.text
+				description = description.encode(encoding = 'ascii', errors = 'replace') 
+				description = description.decode('UTF-8').replace('\n', '')
+				
+				#link = sel_link.get_attribute('href')
+				
+				articles.append([title, description])
+			except:
+				print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
+				continue
+		return articles
+
 	directory, link = SOURCES[source] 
 	with utils.wait_for_page_load(driver):
 		driver.get(link)
 	
-	articles = []
-	for i in range(1, N+1):
-		TITLE 			= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'													
-		DESCRIPTION 	= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[2]/h2'
-		if i == 1: #...
-			TITLE 		= ARTICLES + f'/div[{i}]/div/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'
-			DESCRIPTION = ARTICLES + f'/div[{i}]/div/div/div/div/div[1]/div[2]/div/section/div[2]/h2'
-		try:
-			sel_title = driver.find_element_by_xpath(TITLE)
-			sel_description = driver.find_element_by_xpath(DESCRIPTION)
-			
-			title = sel_title.text
-			title = title.encode(encoding = 'ascii', errors = 'replace') 
-			title = title.decode('UTF-8').replace('\n', '')
-			
-			description = sel_description.text
-			description = description.encode(encoding = 'ascii', errors = 'replace') 
-			description = description.decode('UTF-8').replace('\n', '')
-			
-			#link = sel_link.get_attribute('href')
-			
-			articles.append([title, description])
-		except:
-			print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
-			continue
+	articles = scrape()
 
 	latest = utils.get_latest_data(directory)
 	utils.delete_folder_contents(directory)
-
 	filename = utils.generate_file_name()
+	
 	with open(rf"{directory}\{filename}.txt", 'w', encoding="utf-8", errors='ignore') as file:
 		for article in articles:
-			file.write("%s|^.#@%s\n" % (article[0], article[1]))
+			t, d = article
+			file.write(f"{t}{S}{d}\n")
 
 	if latest is not None:
 		for article in articles:
 			t, d = article
 			for line in latest:
-				tl = line.split("|^.#@")[0]
+				tl = line.split(S)[0]
 				if t == tl:
 					break
 			else:
