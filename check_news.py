@@ -4,28 +4,23 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-
 from colorama import Fore, init as colorama_init
-
 from os.path import dirname, realpath
 from time import sleep
-
 import utils
 
 INTERVAL	=	30 # minutes
-
 USER_DATA_DIR			=	r"D:/Selenium/User Data" 
 PROFILE_DIRECTORY	=	r"Profile 2"
-
 FILE_DIRECTORY		=	dirname(realpath(__file__))
+S = "|^.#@"
+
 SOURCES = {
 	"Papers"	:	[rf"{FILE_DIRECTORY}\Papers"	, "https://paperswithcode.com/latest"],
 	"Mails"		:	[rf"{FILE_DIRECTORY}\Mails"		, "https://outlook.live.com/mail/0/inbox"],
 	"Videos"	:	[rf"{FILE_DIRECTORY}\Videos"	, "https://www.youtube.com/feed/subscriptions"],
 	"Articles":	[rf"{FILE_DIRECTORY}\Articles", "https://towardsdatascience.com"]
 	}
-
-S = "|^.#@"
 
 def check_for_new_papers(source):
 	def scrape():
@@ -184,14 +179,17 @@ def check_for_new_articles(source):
 		ARTICLES = '/html/body/div[1]/div/div[3]/div[2]/div/div[2]/div'
 		articles = []
 		for i in range(1, N+1):
-			TITLE 				= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'													
+			TITLE 				= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'			
 			DESCRIPTION 	= ARTICLES + f'/div[{i}]/div/div/div/div[1]/div[2]/div/section/div[2]/h2'
+			LINK					=	ARTICLES + f'/div[{i}]/div/div/div/div[2]/a'
 			if i == 1: #...
 				TITLE 			= ARTICLES + f'/div[{i}]/div/div/div/div/div[1]/div[2]/div/section/div[1]/h1/a'
 				DESCRIPTION = ARTICLES + f'/div[{i}]/div/div/div/div/div[1]/div[2]/div/section/div[2]/h2'
+				LINK				=	ARTICLES + f'/div[{i}]/div/div/div/div/div[2]/a'
 			try:
 				sel_title = driver.find_element_by_xpath(TITLE)
 				sel_description = driver.find_element_by_xpath(DESCRIPTION)
+				sel_link = driver.find_element_by_xpath(LINK)
 				
 				title = sel_title.text
 				title = title.encode(encoding = 'ascii', errors = 'replace') 
@@ -201,9 +199,9 @@ def check_for_new_articles(source):
 				description = description.encode(encoding = 'ascii', errors = 'replace') 
 				description = description.decode('UTF-8').replace('\n', '')
 				
-				#link = sel_link.get_attribute('href')
+				link = sel_link.get_attribute('href')
 				
-				articles.append([title, description])
+				articles.append([title, description, link])
 			except:
 				print(utils.colored(f"Something went wrong '{i}'", Fore.RED))
 				continue
@@ -221,12 +219,12 @@ def check_for_new_articles(source):
 	
 	with open(rf"{directory}\{filename}.txt", 'w', encoding="utf-8", errors='ignore') as file:
 		for article in articles:
-			t, d = article
-			file.write(f"{t}{S}{d}\n")
+			t, d, l = article
+			file.write(f"{t}{S}{d}{S}{l}\n")
 
 	if latest is not None:
 		for article in articles:
-			t, d = article
+			t, d, l = article
 			for line in latest:
 				tl = line.split(S)[0]
 				if t == tl:
@@ -240,7 +238,6 @@ def check():
 		print(utils.colored(f"{source.upper()}", Fore.MAGENTA))
 		globals()[f'check_for_new_{source.lower()}'](source)
 		print(f"{'-'*90}")
-
 
 if __name__=="__main__":
 	colorama_init()
